@@ -4,6 +4,9 @@ library(mlr)
 # Fast Random Forest implementation:
 library(ranger)
 
+# To plot the results:
+library(ggplot2)
+
 # Read the training set:
 training_set = readRDS('data/training.rds')
 
@@ -20,7 +23,7 @@ rdesc = makeResampleDesc("RepCV", fold = 5, reps = 5)
 
 # Create the RF learner, with some optimized hyperparameters:
 learner.rf = makeLearner("regr.ranger",
-                         num.trees = 500,
+                         num.trees = 100,
                          min.node.size = 25)
 
 # Apply the k-fold CV to fit the models to each subset:
@@ -29,9 +32,11 @@ mod = resample(learner.rf, regr.task, rdesc)
 # Save the predictions from the k-fold CV:
 train_pred = data.frame(mod$pred)
 
-# Compare the predictions with the observed values in the training set:
-plot(truth ~ response, train_pred, asp = 1, pch = '.')
-cor(train_pred$truth, train_pred$response)
+# Compare the predictions with the observed values in the test set:
+print(paste0('Correlation: ', round(cor(train_pred$truth, train_pred$response), 2)))
+print(paste0('RMSE: ', round(measureRMSE(train_pred$truth, train_pred$response), 2)))
+ggplot(train_pred, asp = 1, aes(x = response, y = truth)) + geom_point()
+ggsave('figures/train.png')
 
 # Fit a new model to all the training data:
 mod_fitted = train(learner.rf, regr.task)
@@ -40,7 +45,7 @@ mod_fitted = train(learner.rf, regr.task)
 test_pred = predict(mod_fitted, newdata = test_set)$data
 
 # Compare the predictions with the observed values in the test set:
-plot(truth ~ response, test_pred, asp = 1, pch = '.')
-cor(test_pred$truth, test_pred$response)
-
-
+print(paste0('Correlation: ', round(cor(test_pred$truth, test_pred$response), 2)))
+print(paste0('RMSE: ', round(measureRMSE(test_pred$truth, test_pred$response), 2)))
+ggplot(test_pred, asp = 1, aes(x = response, y = truth)) + geom_point()
+ggsave('figures/test.png')
